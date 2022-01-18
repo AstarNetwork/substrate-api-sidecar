@@ -191,11 +191,6 @@ export class BlocksService extends AbstractService {
 				continue;
 			}
 
-			console.log(
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-				`specName: ${specName} specVersion: ${specVersion} calcFee: ${calcFee}`
-			);
-
 			if (this.minCalcFeeRuntime === null) {
 				extrinsics[idx].info = {
 					error: `Fee calculation not supported for this network`,
@@ -501,9 +496,6 @@ export class BlocksService extends AbstractService {
 		const specVersion = version.specVersion.toNumber();
 
 		if (this.minCalcFeeRuntime && specVersion < this.minCalcFeeRuntime) {
-			console.log(
-				`Returns at minCalcFreeRuntime version low ${this.minCalcFeeRuntime}`
-			);
 			return {
 				specVersion,
 				specName,
@@ -526,9 +518,7 @@ export class BlocksService extends AbstractService {
 		if (!perByte || !extrinsicBaseWeightExists || !multiplier || !weightToFee) {
 			// This particular runtime version is not supported with fee calcs or
 			// does not have the necessary materials to build calcFee
-			console.log(
-				`Returns at does not have the necessary materials to build calcFee`
-			);
+
 			return {
 				specVersion,
 				specName,
@@ -557,19 +547,7 @@ export class BlocksService extends AbstractService {
 			specName,
 			specVersion
 		);
-		const params = {
-			coefficients,
-			multiplier: multiplier.toString(10),
-			perByte: perByte.toString(10),
-			specName,
-			specVersion,
-		};
 
-		console.log(
-			`Calculating up until CalcFee.from_params : ${JSON.stringify(
-				params
-			)} result calcFee: ${JSON.stringify(calcFee)}`
-		);
 		return {
 			calcFee,
 			specName,
