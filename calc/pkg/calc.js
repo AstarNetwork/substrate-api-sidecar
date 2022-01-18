@@ -36,6 +36,8 @@ const encodeString = (typeof cachedTextEncoder.encodeInto === 'function'
 
 function passStringToWasm0(arg, malloc, realloc) {
 
+    if (typeof(arg) !== 'string') throw new Error('expected a string argument');
+
     if (realloc === undefined) {
         const buf = cachedTextEncoder.encode(arg);
         const ptr = malloc(buf.length);
@@ -64,7 +66,7 @@ function passStringToWasm0(arg, malloc, realloc) {
         ptr = realloc(ptr, len, len = offset + arg.length * 3);
         const view = getUint8Memory0().subarray(ptr + offset, ptr + len);
         const ret = encodeString(arg, view);
-
+        if (ret.read !== arg.length) throw new Error('failed to pass whole string');
         offset += ret.written;
     }
 
@@ -78,6 +80,39 @@ function getInt32Memory0() {
         cachegetInt32Memory0 = new Int32Array(wasm.memory.buffer);
     }
     return cachegetInt32Memory0;
+}
+
+let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
+
+cachedTextDecoder.decode();
+
+function getStringFromWasm0(ptr, len) {
+    return cachedTextDecoder.decode(getUint8Memory0().subarray(ptr, ptr + len));
+}
+
+let heap_next = heap.length;
+
+function addHeapObject(obj) {
+    if (heap_next === heap.length) heap.push(heap.length + 1);
+    const idx = heap_next;
+    heap_next = heap[idx];
+
+    if (typeof(heap_next) !== 'number') throw new Error('corrupt heap');
+
+    heap[idx] = obj;
+    return idx;
+}
+
+function dropObject(idx) {
+    if (idx < 36) return;
+    heap[idx] = heap_next;
+    heap_next = idx;
+}
+
+function takeObject(idx) {
+    const ret = getObject(idx);
+    dropObject(idx);
+    return ret;
 }
 
 function debugString(val) {
@@ -145,14 +180,6 @@ function debugString(val) {
     return className;
 }
 
-let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
-
-cachedTextDecoder.decode();
-
-function getStringFromWasm0(ptr, len) {
-    return cachedTextDecoder.decode(getUint8Memory0().subarray(ptr, ptr + len));
-}
-
 let stack_pointer = 32;
 
 function addBorrowedObject(obj) {
@@ -161,12 +188,45 @@ function addBorrowedObject(obj) {
     return stack_pointer;
 }
 
+function _assertNum(n) {
+    if (typeof(n) !== 'number') throw new Error('expected a number argument');
+}
+
 const u32CvtShim = new Uint32Array(2);
 
 const uint64CvtShim = new BigUint64Array(u32CvtShim.buffer);
+
+function _assertBoolean(n) {
+    if (typeof(n) !== 'boolean') {
+        throw new Error('expected a boolean argument');
+    }
+}
+
+function logError(f) {
+    return function () {
+        try {
+            return f.apply(this, arguments);
+
+        } catch (e) {
+            let error = (function () {
+                try {
+                    return e instanceof Error ? `${e.message}\n\nStack:\n${e.stack}` : e.toString();
+                } catch(_) {
+                    return "<failed to stringify thrown value>";
+                }
+            }());
+            console.error("wasm-bindgen: imported JS function that was not marked as `catch` threw an error:", error);
+            throw e;
+        }
+    };
+}
 /**
 */
 class CalcFee {
+
+    constructor() {
+        throw new Error('cannot invoke `new` directly');
+    }
 
     static __wrap(ptr) {
         const obj = Object.create(CalcFee.prototype);
@@ -197,6 +257,7 @@ class CalcFee {
             var len1 = WASM_VECTOR_LEN;
             var ptr2 = passStringToWasm0(spec_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
             var len2 = WASM_VECTOR_LEN;
+            _assertNum(spec_version);
             var ret = wasm.calcfee_from_params(addBorrowedObject(polynomial), ptr0, len0, ptr1, len1, ptr2, len2, spec_version);
             return ret === 0 ? undefined : CalcFee.__wrap(ret);
         } finally {
@@ -211,10 +272,13 @@ class CalcFee {
     */
     calc_fee(weight, len, extrinsic_base_weight) {
         try {
+            if (this.ptr == 0) throw new Error('Attempt to use a moved value');
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            _assertNum(this.ptr);
             uint64CvtShim[0] = weight;
             const low0 = u32CvtShim[0];
             const high0 = u32CvtShim[1];
+            _assertNum(len);
             uint64CvtShim[0] = extrinsic_base_weight;
             const low1 = u32CvtShim[0];
             const high1 = u32CvtShim[1];
@@ -232,6 +296,10 @@ module.exports.CalcFee = CalcFee;
 /**
 */
 class CalcPayout {
+
+    constructor() {
+        throw new Error('cannot invoke `new` directly');
+    }
 
     static __wrap(ptr) {
         const obj = Object.create(CalcPayout.prototype);
@@ -252,6 +320,7 @@ class CalcPayout {
     * @returns {CalcPayout}
     */
     static from_params(total_reward_points, era_payout) {
+        _assertNum(total_reward_points);
         var ptr0 = passStringToWasm0(era_payout, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         var len0 = WASM_VECTOR_LEN;
         var ret = wasm.calcpayout_from_params(total_reward_points, ptr0, len0);
@@ -267,11 +336,16 @@ class CalcPayout {
     */
     calc_payout(validator_reward_points, validator_commission, nominator_exposure, total_exposure, is_validator) {
         try {
+            if (this.ptr == 0) throw new Error('Attempt to use a moved value');
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            _assertNum(this.ptr);
+            _assertNum(validator_reward_points);
+            _assertNum(validator_commission);
             var ptr0 = passStringToWasm0(nominator_exposure, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
             var len0 = WASM_VECTOR_LEN;
             var ptr1 = passStringToWasm0(total_exposure, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
             var len1 = WASM_VECTOR_LEN;
+            _assertBoolean(is_validator);
             wasm.calcpayout_calc_payout(retptr, this.ptr, validator_reward_points, validator_commission, ptr0, len0, ptr1, len1, is_validator);
             var r0 = getInt32Memory0()[retptr / 4 + 0];
             var r1 = getInt32Memory0()[retptr / 4 + 1];
@@ -292,6 +366,56 @@ module.exports.__wbindgen_json_serialize = function(arg0, arg1) {
     getInt32Memory0()[arg0 / 4 + 1] = len0;
     getInt32Memory0()[arg0 / 4 + 0] = ptr0;
 };
+
+module.exports.__wbindgen_string_new = function(arg0, arg1) {
+    var ret = getStringFromWasm0(arg0, arg1);
+    return addHeapObject(ret);
+};
+
+module.exports.__wbg_debug_6caa7e8684a5b22d = logError(function(arg0) {
+    console.debug(getObject(arg0));
+});
+
+module.exports.__wbg_error_9783be44659339ea = logError(function(arg0) {
+    console.error(getObject(arg0));
+});
+
+module.exports.__wbg_info_d458d4c6ed836a93 = logError(function(arg0) {
+    console.info(getObject(arg0));
+});
+
+module.exports.__wbg_log_2e875b1d2f6f87ac = logError(function(arg0) {
+    console.log(getObject(arg0));
+});
+
+module.exports.__wbg_warn_632e55193637edf0 = logError(function(arg0) {
+    console.warn(getObject(arg0));
+});
+
+module.exports.__wbindgen_object_drop_ref = function(arg0) {
+    takeObject(arg0);
+};
+
+module.exports.__wbg_error_4bb6c2a97407129a = logError(function(arg0, arg1) {
+    try {
+        console.error(getStringFromWasm0(arg0, arg1));
+    } finally {
+        wasm.__wbindgen_free(arg0, arg1);
+    }
+});
+
+module.exports.__wbg_new_59cb74e423758ede = logError(function() {
+    var ret = new Error();
+    return addHeapObject(ret);
+});
+
+module.exports.__wbg_stack_558ba5917b466edd = logError(function(arg0, arg1) {
+    var ret = getObject(arg1).stack;
+    var ptr0 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len0 = WASM_VECTOR_LEN;
+    getInt32Memory0()[arg0 / 4 + 1] = len0;
+    getInt32Memory0()[arg0 / 4 + 0] = ptr0;
+});
 
 module.exports.__wbindgen_debug_string = function(arg0, arg1) {
     var ret = debugString(getObject(arg1));
